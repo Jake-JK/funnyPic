@@ -1,0 +1,171 @@
+
+
+<template>
+    <scroll-view scroll-y class="canvas-wrapper {{isShow? 'show' : 'hide'}}">
+        <canvas canvas-id="mycanvas"  style="width:{{width}}px;height:{{height}}px" disable-scroll="true"></canvas>
+    </scroll-view>
+</template>
+
+<script>
+/**
+ * fit 模式：把图片按长边按比例完成的显示图片
+ *
+ *
+ * full 模式 只保证按短边来把图片完成的显示出来 其他部分会被裁剪掉，获取中间部分
+ *
+ * 裁剪模式
+ *
+ */
+
+import wepy from 'wepy';
+import { drawImg } from '@/assets/js/canvasApi.js';
+
+export default class MyCanvas extends wepy.component {
+  data = {
+    width: 500,
+    height: 500,
+    isShow: false
+  };
+  props = {
+    id: {
+      type: String,
+      default: 'mycanvas'
+    }
+  };
+
+  methods = {
+    init(option) {
+      console.log(option);
+      this.width = option.width;
+      this.height = option.height;
+      this.ctx = wx.createCanvasContext("mycanvas", this)
+     
+      this.$apply();
+    },
+
+    show(allImgInfo) {
+      // this.isShow = !this.isShow;
+
+    },
+
+    draw(allImgInfo) {
+      console.log("draw from myCanvas", allImgInfo)
+      this.allImgInfo = allImgInfo;
+       this.setBackGround()
+      let img = this.allImgInfo[0];
+      let ctx = this.ctx;
+      drawImg(this.ctx,this.calcDrawParam(img))
+        .then((res)=>{
+          console.log(res)
+          wx.canvasToTempFilePath({
+            canvasId: "mycanvas",
+            x:0,
+            y:0,
+            width: this.width,
+            height: this.height,
+            fileType: "jpg",
+            quality: 1,
+            success:(res) =>{
+              console.log("canvasToTempFilePath",res)
+              wx.previewImage({
+                urls: [res.tempFilePath]
+              })
+            }
+          })
+        })
+
+    }
+  };
+
+
+
+  calcDrawParam(params) {
+    //fit模式  先判断图片方向 大于1 纵向 小于1 横向
+    console.log("calcDrawParam", params)
+    let direction = params.baseHeight / params.baseWidth;
+    let imageResource = params.path, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight;
+    sx = 0;
+    sy = 0;
+    if(params.isCut){
+      console.log("isCut")
+      dx = 0;
+      dy = 0;
+      dWidth = this.width;
+      dHeight = this.width;
+      sWidth = 1000;
+      sHeight = 1000
+
+    }else if(params.mode === "aspectFit"){
+
+      sWidth = params.baseWidth;
+      sHeight = params.baseHeight;
+      dx = 0;
+      dWidth = this.width;
+      dHeight = dWidth * direction;
+      dy = (this.width - dHeight)/2
+    }else if(params.mode === "aspectFull"){
+      dx = 0;
+      dy = 0;
+
+
+    }
+
+
+
+    console.log({ imageResource , sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight})
+    return { imageResource , sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight}
+
+  }
+
+  setBackGround(){
+
+    let ctx = this.ctx;
+    ctx.setFillStyle("#fffccc");
+    ctx.fillRect(0, 0, this.width, this.height);
+  }
+
+  onLoad() {
+   
+  }
+
+}
+</script>
+
+
+<style lang="less">
+.canvas-wrapper {
+  width:0;
+  height: 0;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+}
+
+// .canvas-wrapper {
+//   flex: 1;
+//   display: flex;
+//   align-items: center;
+//   justify-content: center;
+//   overflow: auto;
+// }
+
+.show {
+  width: 100% !important;
+  height: initial !important;
+  overflow: auto !important;
+  background-color: #ffffff;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  canvas {
+    background-color: #000;
+  }
+}
+.hide {
+  // flex: 0;
+  // overflow: hidden !important;
+}
+
+</style>
+

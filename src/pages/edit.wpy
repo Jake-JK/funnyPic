@@ -1,0 +1,235 @@
+<template>
+    <view class="container">
+        <scroll-view style="flex:1;overflow:auto;font-size:0;text-align:center; {{isShow? 'display:none':''}}"  scroll-y  scroll-with-animation upper-threshold="50" lower-threshold="50" scroll-top="" scroll-left=""
+          @scrolltoupper="" @scrolltolower="" @scroll="">
+            <image @tap="selectMode({{item}})" 
+                   src="{{item.path}}" wx:for = "{{allImgInfo}}" 
+                   style="width:{{mainItemW}}rpx;height:{{mainItemH}}rpx;background:#fff" 
+                   wx:key="allImgInfo"  
+                   mode="{{item.mode}}"></image>
+        </scroll-view>
+        <myCanvas id = "canvas"></myCanvas>
+        <view class="flex flex-row menu">
+            <view class="menu-text" @tap="complate">完成</view>
+            <view class="menu-text" @tap="preview">预览</view>
+            <view class="menu-text">下一张</view>
+        </view>
+       
+    </view>
+</template>
+
+<script>
+import wepy from 'wepy';
+import {
+  toast,
+  chooseImage,
+  getImageInfo,
+  showActionSheet,
+  extend
+} from '@/assets/js/util.js';
+import myCanvas from "@/components/myCanvas"
+
+export default class Edit extends wepy.page {
+  config = {
+    navigationBarTitleText: '编辑',
+    disableScroll: true
+  };
+  constructor() {
+    super();
+  }
+  data = {
+    imageArr: [],
+    mainImg: {},
+    allImgInfo: [],
+    mainItemW: 500,
+    mainItemH: 500,
+    isShow: false
+  };
+  components = {myCanvas};
+
+  computed = {
+    
+  }
+
+  mixins = [];
+
+  onLoad(param, data) {
+    let inputData = data.preload;
+    if(!inputData) {
+        inputData = {
+            mainImg: {
+                src: "../assets/img/test_min.jpg"
+            },
+            imageArr:["../assets/img/glasses2.jpg","../assets/img/glasses3.jpg","../assets/img/glasses4.jpg","../assets/img/test.jpg"]
+        }
+    }
+
+    this.mainImg = [];
+    this.allImgInfo = [];
+    this.mainImg = inputData.mainImg;
+    
+    if(!inputData.allImgInfo){
+        this.imageArr = inputData.imageArr;
+
+        let len = this.imageArr.length;
+        if (Number.isInteger(len / 2)) {
+            this.imageArr.splice(len / 2, 0, this.mainImg.src);
+        }
+        async function addImageInfo(params) {
+            if (inputData) {
+                for (let i = 0, len = this.imageArr.length; i < len; i++) {
+                    let val = this.imageArr[i],imgInfo;
+                    imgInfo = await getImageInfo(val);
+                    imgInfo.isMain = i == (len - 1) / 2;
+                    imgInfo.mode = this.judgeDirection(imgInfo);
+                    imgInfo.baseHeight = imgInfo.height;
+                    imgInfo.baseWidth = imgInfo.width;
+                    imgInfo.isCut = false;
+                    imgInfo.basePath = imgInfo.path;
+                    imgInfo.id = i;
+                    this.allImgInfo.push(imgInfo);
+                }
+                this.$apply();
+                this.$invoke("myCanvas", "init", {
+                  width: 700,
+                  height: 700 * this.allImgInfo.length
+                })  
+            }
+        }
+        addImageInfo.apply(this);
+    }else{
+        this.allImgInfo = inputData.allImgInfo;
+        this.$apply()
+    }
+    
+  }
+
+  setAllImgInfo (params){
+    console.log(params)
+    this.allImgInfo = params
+    this.$apply()
+  }
+
+  setAllImgInfoItem(item){
+    this.allImgInfo.filter(img => img.id == item.id)
+      .map((val) => {
+        extend(val, item)
+        this.$apply()
+        return val
+      })
+     
+  }
+
+  onReady(){
+
+  }
+
+  methods = {
+    //选择模式
+    selectMode(item) {
+      if (item.isMain) return;
+
+      showActionSheet(['aspectFit模式', 'aspectFill模式', '截取', '换图']).then(res => {
+        this.allImgInfo.filter(img => img.id === item.id).map(val => {
+          switch (res.tapIndex) {
+            case 0:
+              val.mode = 'aspectFit';
+              val.path = val.basePath;
+              val.isCut = false;
+              break;
+            case 1:
+              val.mode = 'aspectFill';
+              val.path = val.basePath;
+              val.isCut = false;
+              break;
+            case 2:
+              this.$preload({src: item.basePath, cutItem: item})
+              wepy.navigateTo({ url: 'cut' });
+              break;
+            case 3:
+              this.changeImg(item)
+              break;
+          }
+          return val;
+        });
+        this.$apply();
+      });
+    },
+
+    //完成
+    complate() {
+      let curPages = getCurrentPages();
+      let prePage = curPages[curPages.length - 2];
+      var outputData = prePage.data.imgData
+            .map(val => {
+                if(val.src == this.mainImg.src){
+                    val.info = this.allImgInfo;
+                }
+                return val;
+            });
+      prePage.setData({
+          imgData: outputData
+      })
+      wepy.navigateBack({
+        delta: 1 //返回的页面数，如果 delta 大于现有页面数，则返回到首页,
+      });
+    },
+
+    //预览
+    preview() {
+      // this.isShow = !this.isShow
+      console.log("before draw allImgInfo", this.allImgInfo)
+      this.$invoke("myCanvas", "draw", this.allImgInfo)
+    }
+  }; 
+  //判断方向，并返回默认的图片mode
+  judgeDirection(item) {
+    /**
+       * 缩放	scaleToFill	不保持纵横比缩放图片，使图片的宽高完全拉伸至填满 image 元素
+         缩放	aspectFit	保持纵横比缩放图片，使图片的长边能完全显示出来。也就是说，可以完整地将图片显示出来。
+         缩放	aspectFill	保持纵横比缩放图片，只保证图片的短边能完全显示出来。也就是说，图片通常只在水平或垂直方向是完整的，另一个方向将会发生截取。
+         缩放	widthFix	宽度不变，高度自动变化，保持原图宽高比不变
+       */
+    let direction = item.width / item.height;
+    return direction > 1 ? 'aspectFit' : 'aspectFill';
+  }
+
+  //换图
+  changeImg(item){
+      chooseImage(1)
+        .then(res => {
+            this.allImgInfo.filter(img => img.id === item.id).map(val => {
+                val.path = res.tempFilePaths[0]
+                val.basePath = val.path
+                val.isCut = false
+                this.$apply()
+                return val
+            })
+        })
+  }
+
+}
+</script>
+
+<style>
+page {
+  background-color: #000;
+  color: #04b00f;
+}
+image {
+  background-color: #ffffff;
+}
+.cropper {
+  margin: 0 auto;
+}
+.menu {
+  width: 100%;
+  padding: 30rpx 0;
+}
+.menu-text {
+  flex: 1;
+  text-align: center;
+}
+</style>
+
+

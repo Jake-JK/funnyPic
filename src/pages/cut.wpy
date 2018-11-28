@@ -1,0 +1,177 @@
+
+<template>
+    <view @touchmove = "moveStop" class="cropper-wrapper" >
+        <cropper :options="cropperOpt" @beforeImageLoad="bl"></cropper>
+        <view class="cropper-buttons" >
+            <view class="upload" bindtap="uploadTap">重新选择</view>
+            <view class="getCropperImage" bindtap="getCropperImage">确定</view>
+        </view>
+    </view>
+</template>
+
+<script>
+import wepy from 'wepy';
+import Cropper from '@/components/wepy-com-cropper';
+import { getPrePage } from "@/assets/js/util.js"
+const device = wx.getSystemInfoSync();
+const width = device.windowWidth;
+const height = device.windowHeight - 50;
+export default class Cut extends wepy.page {
+  config = {
+    navigationBarTitleText: '截取',
+    disableScroll: true
+  };
+  components = { cropper: Cropper };
+
+  mixins = [];
+
+  data = {
+    imgPath: '',
+    cropperOpt: {
+      width,
+      height,
+      scale: 2.5,
+      zoom: 8,
+      cut: {
+        x: (width - 300) / 2,
+        y: (height - 300) / 2,
+        width: 300,
+        height: 300
+      }
+    }
+  };
+
+  methods = {
+    uploadTap() {
+      wx.chooseImage({
+        count: 1, // 默认9
+        sizeType: ['original'], // 可以指定是原图还是压缩图，默认二者都有
+        sourceType: ['album', 'camera'], // 可以指定来源是相册还是相机，默认二者都有
+        success: res => {
+          const src = res.tempFilePaths[0];
+          //  获取裁剪图片资源后，给data添加src属性及其值
+          this.$invoke('cropper', 'pushOrigin', src);
+        }
+      });
+    },
+    getCropperImage() {
+      this.$invoke('cropper', 'getCropperImage', src => {
+        if (src) {
+            this.$preload('imgSrc', src)
+            this.back(src)
+        } else {
+          console.log('获取图片地址失败，请稍后重试');
+        }
+      });
+    },
+    moveStop() {
+      return false;
+    }
+  };
+
+  events = {
+    ready() {
+      console.log('we-cropper ready');
+    },
+    beforeImageLoad() {
+      console.log('we-cropper beforeImageLoad');
+    },
+    imageLoad() {
+      console.log('we-cropper imageLoad');
+    },
+    beforeDraw() {
+      console.log('we-cropper beforeDraw');
+    }
+  };
+
+  onLoad(params, data) {
+    let inputData = data.preload;
+    this.inputData = inputData
+    this.src = inputData.src;
+    console.log(inputData)    
+  }
+
+  onReady() {
+    if (this.src) {
+      this.$invoke('cropper', 'pushOrigin', this.src);
+    }
+  }
+
+  back(inputSrc){
+    var prePage = getPrePage()
+    var route = prePage.route
+    if(route.indexOf("index") >= 0){
+      wepy.redirectTo({ url: 'mainView' });
+    }else if(route.indexOf("edit")){
+      let allImgInfo = prePage.data.allImgInfo;
+      let cutItem = this.inputData.cutItem
+      cutItem.path = inputSrc;
+      cutItem.isCut = true;
+
+      prePage.setAllImgInfoItem(cutItem)
+      wepy.navigateBack();
+    }
+  }
+}
+</script>
+<style lang="css">
+page {
+  -webkit-user-select: none;
+  user-select: none;
+  width: 100%;
+  height: 100%;
+  background-color: #f8f8f8;
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+.flex {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cropper-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background-color: #e5e5e5;
+}
+
+.cropper-buttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50px;
+  line-height: 50px;
+}
+
+.cropper-buttons .upload,
+.cropper-buttons .getCropperImage {
+  width: 50%;
+  text-align: center;
+}
+
+.cropper {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.cropper-buttons {
+  background-color: rgba(0, 0, 0, 0.95);
+  color: #04b00f;
+}
+</style>
+
+

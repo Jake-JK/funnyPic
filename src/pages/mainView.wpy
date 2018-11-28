@@ -1,0 +1,158 @@
+<template>
+    <view class="container">
+        <view class="flex flex-row mainImg-wrapper">
+          <image @tap="onTapImg({{item}})" class="mainImg {{item.info? 'info' : ''}}" wx:if ="{{imgData.length > 0}}" wx:for = "{{imgData}}" wx:key="key" src="{{item.src}}" mode="aspectFit" lazy-load="false" /></image>
+        </view>
+        <view class="canvas-wrapper">
+          <canvas canvas-id="canvas" style="width:{{width}}px;height:{{height}}px" disable-scroll="true"></canvas>
+        </view>
+    </view>
+</template>
+
+
+<script>
+import wepy from 'wepy';
+import { toast, chooseImage } from '@/assets/js/util.js';
+let deviceWidth = wx.getSystemInfoSync().windowWidth;
+let cutLen = 80;
+
+export default class MainView extends wepy.page {
+  config = {
+    navigationBarTitleText: '主图预览',
+    disableScroll: true
+  };
+  components = {  };
+  data = {
+    imgSrc: '../assets/img/test_min.jpg',
+    width: deviceWidth - cutLen,
+    height: deviceWidth - cutLen,
+    imgData: []
+  };
+  methods = {
+    onTapImg(item) {
+      if (!item.info) {
+        chooseImage(8)
+          .then(res => {
+            var len = res.tempFilePaths.length;
+            if (len > 0 && len % 2 == 0) {
+              this.$preload({ imageArr: res.tempFilePaths, mainImg: item });
+              wx.navigateTo({ url: 'edit' });
+            } else {
+              toast('请选择偶数张相片，最多8张');
+            }
+          })
+          .catch(err => console.log(err));
+      } else {
+        this.$preload({ allImgInfo: item.info, mainImg: item });
+        wx.navigateTo({ url: 'edit' });
+      }
+    }
+  };
+
+  onLoad(param, data) {
+    this.imgData.length = 0;
+
+    if (data.preload) {
+      let inputData = data.preload;
+      this.imgSrc = inputData.imgSrc;
+    }
+  }
+
+  onReady() {
+    this.ctx = wx.createCanvasContext('canvas', this);
+    console.log(this.ctx)
+    var self = this;
+    function* step() {
+      var num = 0;
+      var x = 0,
+          y = 0,
+          len = self.width / 3;
+      while (num < 9) {
+        if (num % 3 == 0) {
+          num === 0 ? y : (y += len);
+          x = 0;
+        } else {
+          num === 0 ? x : (x += len);
+        }
+        let res = yield self.intercept(x, y, len);
+        self.imgData.push({ src: res.tempFilePath });
+        self.$apply();
+        num++;
+      }
+    }
+    this.it = step();
+    this.drawImg().then(res => {
+      this.it.next();
+    });
+  }
+
+  drawImg() {
+    return new Promise((resolve, reject) => {
+      let ouput;
+      let width, height;
+      let ctx = this.ctx;
+      wepy.getImageInfo({
+        src: this.imgSrc, //图片的路径，可以是相对路径，临时文件路径，存储文件路径，网络图片路径,
+        success: res => {
+          ouput = res;
+          ctx.setFillStyle('red');
+          ctx.drawImage(this.imgSrc, 0, 0, this.width, this.height);
+          ctx.draw(false, () => {
+            resolve(res);
+          });
+        },
+        fail: err => {
+          reject(err);
+        }
+      });
+    });
+  }
+
+  intercept(x, y, len) {
+    let ctx = this.ctx;
+    wx.canvasToTempFilePath({
+      canvasId: 'canvas',
+      x,
+      y,
+      width: len,
+      height: len,
+      quality: 1,
+      success: res => {
+        this.it.next(res);
+      }
+    });
+  }
+}
+</script>
+
+<style lang="css">
+page {
+  background-color: #000;
+}
+.mainImg {
+  width: 156rpx;
+  height: 156rpx;
+  background-color: #fff;
+}
+.mainImg-wrapper {
+  width: 486rpx;
+  height: 486rpx;
+  background-color: #000;
+  margin: 0 auto;
+  flex-wrap: wrap;
+  align-content: space-between;
+  justify-content: space-between;
+  padding-top: 30rpx;
+}
+.canvas-wrapper {
+  width: 0px;
+  height: 0px;
+  overflow: hidden;
+}
+.info {
+  box-shadow: 0 0 7px #fff;
+}
+</style>
+
+
+
