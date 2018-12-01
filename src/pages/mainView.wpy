@@ -1,7 +1,14 @@
 <template>
     <view class="container">
         <view class="flex flex-row mainImg-wrapper">
-          <image @tap="onTapImg({{item}})" class="mainImg {{item.info? 'info' : ''}}" wx:if ="{{imgData.length > 0}}" wx:for = "{{imgData}}" wx:key="key" src="{{item.src}}" mode="aspectFit" lazy-load="false" /></image>
+          <image @tap="onTapImg({{item}})" class="mainImg {{item.drewPath? 'info' : ''}}" wx:if ="{{imgData.length > 0}}" wx:for = "{{imgData}}" wx:key="key" src="{{item.src}}" mode="aspectFit" lazy-load="false" /></image>
+        </view>
+        <view class="zan-btns">
+          <view style="color : #fff; font-size: 32rpx; text-align:center;margin-bottom:30rpx">
+            已编辑{{edited}} / {{imgData.length}}
+          </view>
+          <button class="zan-btn zan-btn--primary" @tap="save" wx:if="{{edited>0}}">一键保存</button>
+          <button class="zan-btn zan-btn--primary" @tap="preview" wx:if="{{edited>0}}">预览</button>
         </view>
         <view class="canvas-wrapper">
           <canvas canvas-id="canvas" style="width:{{width}}px;height:{{height}}px" disable-scroll="true"></canvas>
@@ -12,7 +19,8 @@
 
 <script>
 import wepy from 'wepy';
-import { toast, chooseImage } from '@/assets/js/util.js';
+import { toast, chooseImage, showLoading } from '@/assets/js/util.js';
+import { _previewImage, _saveImageToPhotosAlbum } from "@/assets/js/canvasApi.js"
 let deviceWidth = wx.getSystemInfoSync().windowWidth;
 let cutLen = 80;
 
@@ -28,6 +36,12 @@ export default class MainView extends wepy.page {
     height: deviceWidth - cutLen,
     imgData: []
   };
+  computed = {
+    edited() {
+      return this.getAllDrewPath().length
+    }
+  }
+
   methods = {
     onTapImg(item) {
       if (!item.info) {
@@ -46,12 +60,30 @@ export default class MainView extends wepy.page {
         this.$preload({ allImgInfo: item.info, mainImg: item });
         wx.navigateTo({ url: 'edit' });
       }
+    },
+
+    preview() {
+      let previewArr = this.getAllDrewPath()
+      _previewImage({
+        urls: previewArr
+      })
+    },
+
+    async save() {
+      let saveArr = this.getAllDrewPath();
+      showLoading()
+      for(let i = 0,len = saveArr.length; i<len; i++) {
+        await _saveImageToPhotosAlbum({
+          filePath: saveArr[i]
+        })
+      }
+      wepy.hideLoading();
+      toast("已编辑的图片，已保存到相册")
     }
   };
 
   onLoad(param, data) {
     this.imgData.length = 0;
-
     if (data.preload) {
       let inputData = data.preload;
       this.imgSrc = inputData.imgSrc;
@@ -60,7 +92,6 @@ export default class MainView extends wepy.page {
 
   onReady() {
     this.ctx = wx.createCanvasContext('canvas', this);
-    console.log(this.ctx)
     var self = this;
     function* step() {
       var num = 0;
@@ -85,6 +116,7 @@ export default class MainView extends wepy.page {
       this.it.next();
     });
   }
+
 
   drawImg() {
     return new Promise((resolve, reject) => {
@@ -121,6 +153,23 @@ export default class MainView extends wepy.page {
         this.it.next(res);
       }
     });
+  }
+
+  setImgData(mainImgSrc, obj) {
+    let target = this.imgData.filter(item => item.src == mainImgSrc)[0]
+    target.info = obj.info;
+    target.drewPath = obj.drewPath;
+
+    console.log(this.imgData)
+    this.$apply()
+  }
+
+  getAllDrewPath() {
+     return this.imgData.filter((val) => {
+        if(val.drewPath) return val
+     }).map((item) => {
+       return item.drewPath
+     })
   }
 }
 </script>

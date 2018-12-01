@@ -11,7 +11,6 @@ export async function toast(title) {
         resolve(res)
       }
     });
-
   })
 }
 
@@ -48,7 +47,6 @@ export async function getImageInfo(src) {
 }
 
 export function showActionSheet(itemList, itemColor) {
-
   return new Promise((resolve, reject) => {
     wepy.showActionSheet({
       itemList, //按钮的文字数组，数组长度最大为6个,
@@ -71,4 +69,11 @@ export function extend(o, p) {
     o[key] = p[key]
   }
   return o
+}
+
+export function showLoading(title,mask){
+  wepy.showLoading({
+    title: title? title : "请稍后...", //提示的内容,
+    mask: !mask , //显示透明蒙层，防止触摸穿透,
+  });
 }

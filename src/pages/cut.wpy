@@ -7,12 +7,13 @@
             <view class="getCropperImage" bindtap="getCropperImage">确定</view>
         </view>
     </view>
+
 </template>
 
 <script>
 import wepy from 'wepy';
 import Cropper from '@/components/wepy-com-cropper';
-import { getPrePage } from "@/assets/js/util.js"
+import { getPrePage,getImageInfo,extend } from "@/assets/js/util.js"
 const device = wx.getSystemInfoSync();
 const width = device.windowWidth;
 const height = device.windowHeight - 50;
@@ -22,9 +23,7 @@ export default class Cut extends wepy.page {
     disableScroll: true
   };
   components = { cropper: Cropper };
-
   mixins = [];
-
   data = {
     imgPath: '',
     cropperOpt: {
@@ -71,24 +70,23 @@ export default class Cut extends wepy.page {
 
   events = {
     ready() {
-      console.log('we-cropper ready');
+   
     },
     beforeImageLoad() {
-      console.log('we-cropper beforeImageLoad');
+     
     },
     imageLoad() {
-      console.log('we-cropper imageLoad');
+   
     },
     beforeDraw() {
-      console.log('we-cropper beforeDraw');
+     
     }
   };
 
   onLoad(params, data) {
     let inputData = data.preload;
     this.inputData = inputData
-    this.src = inputData.src;
-    console.log(inputData)    
+    this.src = inputData.src;  
   }
 
   onReady() {
@@ -107,9 +105,12 @@ export default class Cut extends wepy.page {
       let cutItem = this.inputData.cutItem
       cutItem.path = inputSrc;
       cutItem.isCut = true;
-
-      prePage.setAllImgInfoItem(cutItem)
-      wepy.navigateBack();
+      getImageInfo(inputSrc)
+        .then((res)=>{
+          extend(cutItem, res)
+          prePage.setAllImgInfoItem(cutItem)
+          wepy.navigateBack();
+        })
     }
   }
 }

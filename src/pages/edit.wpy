@@ -12,9 +12,8 @@
         <view class="flex flex-row menu">
             <view class="menu-text" @tap="complate">完成</view>
             <view class="menu-text" @tap="preview">预览</view>
-            <view class="menu-text">下一张</view>
+            <view class="menu-text" @tap="saveImg">保存</view>
         </view>
-       
     </view>
 </template>
 
@@ -43,26 +42,14 @@ export default class Edit extends wepy.page {
     allImgInfo: [],
     mainItemW: 500,
     mainItemH: 500,
-    isShow: false
+    isShow: false,
+    drewPath: null,
+    drawCanvasWidth: 1280
   };
   components = {myCanvas};
 
-  computed = {
-    
-  }
-
-  mixins = [];
-
   onLoad(param, data) {
     let inputData = data.preload;
-    if(!inputData) {
-        inputData = {
-            mainImg: {
-                src: "../assets/img/test_min.jpg"
-            },
-            imageArr:["../assets/img/glasses2.jpg","../assets/img/glasses3.jpg","../assets/img/glasses4.jpg","../assets/img/test.jpg"]
-        }
-    }
 
     this.mainImg = [];
     this.allImgInfo = [];
@@ -91,44 +78,35 @@ export default class Edit extends wepy.page {
                 }
                 this.$apply();
                 this.$invoke("myCanvas", "init", {
-                  width: 700,
-                  height: 700 * this.allImgInfo.length
+                  width: this.drawCanvasWidth,
+                  height:  this.drawCanvasWidth * this.allImgInfo.length
                 })  
             }
         }
         addImageInfo.apply(this);
     }else{
         this.allImgInfo = inputData.allImgInfo;
+        this.$invoke("myCanvas", "init", {
+                  width: 700,
+                  height: 700 * this.allImgInfo.length
+                })  
         this.$apply()
     }
     
   }
 
-  setAllImgInfo (params){
-    console.log(params)
-    this.allImgInfo = params
-    this.$apply()
+  events = {
+    "setDrewPath": (path) => {
+      this.drewPath = path
+      console.log(this.drewPath)
+    }
   }
-
-  setAllImgInfoItem(item){
-    this.allImgInfo.filter(img => img.id == item.id)
-      .map((val) => {
-        extend(val, item)
-        this.$apply()
-        return val
-      })
-     
-  }
-
-  onReady(){
-
-  }
+ 
 
   methods = {
     //选择模式
     selectMode(item) {
       if (item.isMain) return;
-
       showActionSheet(['aspectFit模式', 'aspectFill模式', '截取', '换图']).then(res => {
         this.allImgInfo.filter(img => img.id === item.id).map(val => {
           switch (res.tapIndex) {
@@ -167,19 +145,26 @@ export default class Edit extends wepy.page {
                 }
                 return val;
             });
-      prePage.setData({
-          imgData: outputData
+      this.$invoke("myCanvas", "draw", this.allImgInfo,(res)=>{
+        console.log(res)
+        prePage.setImgData(this.mainImg.src, {
+          info: this.allImgInfo,
+          drewPath: res.tempFilePath
+        })
+        wepy.navigateBack({
+          delta: 1 //返回的页面数，如果 delta 大于现有页面数，则返回到首页,
+        });
       })
-      wepy.navigateBack({
-        delta: 1 //返回的页面数，如果 delta 大于现有页面数，则返回到首页,
-      });
     },
 
     //预览
     preview() {
-      // this.isShow = !this.isShow
-      console.log("before draw allImgInfo", this.allImgInfo)
-      this.$invoke("myCanvas", "draw", this.allImgInfo)
+      this.$invoke("myCanvas", "previewImage", this.allImgInfo)
+    },
+
+    //保存
+    saveImg() {
+      this.$invoke("myCanvas", "saveImage", this.allImgInfo)
     }
   }; 
   //判断方向，并返回默认的图片mode
@@ -206,6 +191,20 @@ export default class Edit extends wepy.page {
                 return val
             })
         })
+  }
+
+  setAllImgInfo (params){
+    this.allImgInfo = params
+    this.$apply()
+  }
+
+  setAllImgInfoItem(item){
+    this.allImgInfo.filter(img => img.id == item.id)
+      .map((val) => {
+        extend(val, item)
+        this.$apply()
+        return val
+      })
   }
 
 }

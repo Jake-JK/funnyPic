@@ -10,21 +10,20 @@
 /**
  * fit 模式：把图片按长边按比例完成的显示图片
  *
- *
  * full 模式 只保证按短边来把图片完成的显示出来 其他部分会被裁剪掉，获取中间部分
  *
  * 裁剪模式
  *
  */
-
 import wepy from 'wepy';
-import { drawImg } from '@/assets/js/canvasApi.js';
-
+import { drawImg, _draw, _canvasToTempFilePath, _saveImageToPhotosAlbum } from '@/assets/js/canvasApi.js';
+import { showLoading, toast } from '@/assets/js/util.js';
 export default class MyCanvas extends wepy.component {
   data = {
-    width: 500,
-    height: 500,
-    isShow: false
+    width: 700,
+    height: 700,
+    isShow: false,
+    drewPath: null
   };
   props = {
     id: {
@@ -32,95 +31,101 @@ export default class MyCanvas extends wepy.component {
       default: 'mycanvas'
     }
   };
-
   methods = {
     init(option) {
       console.log(option);
       this.width = option.width;
       this.height = option.height;
       this.ctx = wx.createCanvasContext("mycanvas", this)
-     
       this.$apply();
     },
-
-    show(allImgInfo) {
-      // this.isShow = !this.isShow;
-
+    async draw(allImgInfo, cb) {
+      showLoading()
+      let self = this
+      this.allImgInfo = allImgInfo;
+      this.setBackGround()
+      let imgs = this.allImgInfo;
+      let ctx = this.ctx;
+      let beginDy = 0
+      for(let i = 0; i < imgs.length; i++){
+        await drawImg(this.ctx,this.calcDrawParam(imgs[i],beginDy))
+        beginDy += this.width
+      }
+      await _draw(ctx, false);
+      let res = await _canvasToTempFilePath({
+        canvasId: "mycanvas",
+        x:0,
+        y:0,
+        width: self.width,
+        height: self.height,
+        fileType: "jpg",
+        quality: 1,
+      })
+      //保存路径。
+      this.drewPath = res.tempFilePath
+      this.$emit("setDrewPath", this.drewPath)
+      cb && cb(res)
+      wepy.hideLoading();
     },
 
-    draw(allImgInfo) {
-      console.log("draw from myCanvas", allImgInfo)
-      this.allImgInfo = allImgInfo;
-       this.setBackGround()
-      let img = this.allImgInfo[0];
-      let ctx = this.ctx;
-      drawImg(this.ctx,this.calcDrawParam(img))
-        .then((res)=>{
-          console.log(res)
-          wx.canvasToTempFilePath({
-            canvasId: "mycanvas",
-            x:0,
-            y:0,
-            width: this.width,
-            height: this.height,
-            fileType: "jpg",
-            quality: 1,
-            success:(res) =>{
-              console.log("canvasToTempFilePath",res)
-              wx.previewImage({
-                urls: [res.tempFilePath]
-              })
-            }
-          })
-        })
 
+    previewImage(allImgInfo) {
+      this.methods.draw.call(this, allImgInfo, (res) => {
+        wx.previewImage({
+          urls: [res.tempFilePath]
+        })
+      })
+    },
+
+    saveImage(allImgInfo) {
+      this.methods.draw.call(this, allImgInfo, (res) => {
+        _saveImageToPhotosAlbum({
+          filePath: res.tempFilePath
+        }).then((res) => {
+          toast("保存成功。")
+        })
+      })
     }
   };
 
-
-
-  calcDrawParam(params) {
+  calcDrawParam(params, beginDy) {
     //fit模式  先判断图片方向 大于1 纵向 小于1 横向
-    console.log("calcDrawParam", params)
     let direction = params.baseHeight / params.baseWidth;
     let imageResource = params.path, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight;
     sx = 0;
     sy = 0;
+    dy = beginDy
     if(params.isCut){
-      console.log("isCut")
       dx = 0;
-      dy = 0;
       dWidth = this.width;
       dHeight = this.width;
-      sWidth = 1000;
-      sHeight = 1000
-
+      sWidth = params.width;
+      sHeight = params.height;
     }else if(params.mode === "aspectFit"){
-
       sWidth = params.baseWidth;
       sHeight = params.baseHeight;
       dx = 0;
       dWidth = this.width;
       dHeight = dWidth * direction;
-      dy = (this.width - dHeight)/2
-    }else if(params.mode === "aspectFull"){
+      dy += (this.width - dHeight)/2;
+    }else if(params.mode === "aspectFill"){
+      let len = direction >=1 ? params.baseWidth : params.baseHeight;
       dx = 0;
-      dy = 0;
-
-
+      dWidth = this.width;
+      dHeight = this.width;
+      sWidth = len;
+      sHeight = len;
+      sx = direction < 1? (params.baseWidth - len)/2 : 0 ;
+      sy = direction > 1? (params.baseHeight - len)/2 : 0 ;
     }
-
-
-
-    console.log({ imageResource , sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight})
-    return { imageResource , sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight}
-
+    return { imageResource , sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight }
   }
 
-  setBackGround(){
+  
 
+  setBackGround(){
     let ctx = this.ctx;
-    ctx.setFillStyle("#fffccc");
+    ctx.setFillStyle("#fff");
     ctx.fillRect(0, 0, this.width, this.height);
   }
 
@@ -134,20 +139,15 @@ export default class MyCanvas extends wepy.component {
 
 <style lang="less">
 .canvas-wrapper {
+  position: absolute;
   width:0;
   height: 0;
   overflow: hidden;
-  align-items: center;
-  justify-content: center;
+  left: 99999px;
+  top: 99999px;
 }
 
-// .canvas-wrapper {
-//   flex: 1;
-//   display: flex;
-//   align-items: center;
-//   justify-content: center;
-//   overflow: auto;
-// }
+
 
 .show {
   width: 100% !important;
