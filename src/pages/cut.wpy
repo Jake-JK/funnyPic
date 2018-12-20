@@ -7,7 +7,6 @@
             <view class="getCropperImage" bindtap="getCropperImage">确定</view>
         </view>
     </view>
-
 </template>
 
 <script>
@@ -85,7 +84,7 @@ export default class Cut extends wepy.page {
 
   onLoad(params, data) {
     let inputData = data.preload;
-    this.inputData = inputData
+    this.inputData = inputData;
     this.src = inputData.src;  
   }
 
@@ -98,19 +97,32 @@ export default class Cut extends wepy.page {
   back(inputSrc){
     var prePage = getPrePage()
     var route = prePage.route
-    if(route.indexOf("index") >= 0){
-      wepy.redirectTo({ url: 'mainView' });
-    }else if(route.indexOf("edit")){
-      let allImgInfo = prePage.data.allImgInfo;
-      let cutItem = this.inputData.cutItem
-      cutItem.path = inputSrc;
-      cutItem.isCut = true;
-      getImageInfo(inputSrc)
-        .then((res)=>{
-          extend(cutItem, res)
-          prePage.setAllImgInfoItem(cutItem)
-          wepy.navigateBack();
-        })
+    route = route.split("/")
+    route = route[route.length -1]
+    switch(route){
+      case "index":
+        wepy.redirectTo({ url: 'mainView' });
+        break;
+      case "edit":
+        let allImgInfo = prePage.data.allImgInfo;
+        let cutItem = this.inputData.cutItem
+        cutItem.path = inputSrc;
+        cutItem.isCut = true;
+        getImageInfo(inputSrc)
+          .then((res)=>{
+            extend(cutItem, res)
+            prePage.setAllImgInfoItem(cutItem)
+            wepy.navigateBack();
+          })
+        break;
+      case "mainView":
+        console.log("this is cut to mainView")
+        setTimeout(()=>{
+          prePage.setMainImg(inputSrc)
+        },300)
+        
+        wepy.navigateBack();
+        break;
     }
   }
 }

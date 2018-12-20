@@ -32,12 +32,18 @@ export default class MyCanvas extends wepy.component {
     }
   };
   methods = {
-    init(option) {
-      console.log(option);
-      this.width = option.width;
-      this.height = option.height;
+    init(option, cb) {
+      this.width = option.width? option.width : this.width;
+      this.height = option.height? option.height : this.height;
       this.ctx = wx.createCanvasContext("mycanvas", this)
       this.$apply();
+      typeof cb === "function" && cb()
+    },
+    setWidthHeight(option,cb) {
+      this.width = option.width;
+      this.height = option.height;
+      this.$apply();
+      typeof cb === "function" && cb()
     },
     async draw(allImgInfo, cb) {
       showLoading()
@@ -88,27 +94,43 @@ export default class MyCanvas extends wepy.component {
     }
   };
 
+  events = {
+    myCanvasInit(option,cb){
+      this.width = option.width? option.width : this.width;
+      this.height = option.height? option.height : this.height;
+      this.ctx = wx.createCanvasContext("mycanvas", this)
+      this.$apply();
+      typeof cb === "function" && cb()
+    }
+  }
+
   calcDrawParam(params, beginDy) {
     //fit模式  先判断图片方向 大于1 纵向 小于1 横向
     let direction = params.baseHeight / params.baseWidth;
     let imageResource = params.path, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight;
     sx = 0;
     sy = 0;
-    dy = beginDy
+    dy = beginDy;
     if(params.isCut){
       dx = 0;
       dWidth = this.width;
       dHeight = this.width;
       sWidth = params.width;
       sHeight = params.height;
-    }else if(params.mode === "aspectFit"){
+    }else if(params.mode === "aspectFit"){  //全部显示
       sWidth = params.baseWidth;
       sHeight = params.baseHeight;
-      dx = 0;
-      dWidth = this.width;
-      dHeight = dWidth * direction;
-      dy += (this.width - dHeight)/2;
-    }else if(params.mode === "aspectFill"){
+      if(direction<1){  //横向
+        dx = 0;
+        dWidth = this.width;
+        dHeight = dWidth * direction;
+        dy += (this.width - dHeight)/2;
+      }else{  //纵向
+        dHeight = this.width;
+        dWidth = dHeight / direction;
+        dx = (this.width - dWidth)/2
+      }
+    }else if(params.mode === "aspectFill"){ //只显示一部分
       let len = direction >=1 ? params.baseWidth : params.baseHeight;
       dx = 0;
       dWidth = this.width;
@@ -147,25 +169,6 @@ export default class MyCanvas extends wepy.component {
   top: 99999px;
 }
 
-
-
-.show {
-  width: 100% !important;
-  height: initial !important;
-  overflow: auto !important;
-  background-color: #ffffff;
-  overflow: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  canvas {
-    background-color: #000;
-  }
-}
-.hide {
-  // flex: 0;
-  // overflow: hidden !important;
-}
 
 </style>
 

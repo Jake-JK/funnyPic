@@ -47,13 +47,11 @@ export function drawImg(ctx ,obj) {
         reslove(obj)
     })
 }
-
+// ctx.draw
 export let _draw = Promise.wrapForCanvas("draw")
-
+//将canvas转为图片
 export let _canvasToTempFilePath = Promise.wrap(wx.canvasToTempFilePath)
-
-
+//保存图片到设备
 export let _saveImageToPhotosAlbum = Promise.wrap(wx.saveImageToPhotosAlbum)
-
 
 export let _previewImage = Promise.wrap(wx.previewImage)

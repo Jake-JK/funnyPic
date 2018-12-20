@@ -2,9 +2,9 @@
 @import "../assets/css/common.wxss";
 </style>
 <template>
-  <view class="container">
+  <view class="container" style="justify-content:center">
     <view class="zan-btns">
-      <button class="zan-btn zan-btn--primary" @tap="click">选择主图</button>
+      <button  class="zan-btn zan-btn--primary" @tap="click">从这里开始</button>
     </view>
   </view>
 </template>
@@ -14,7 +14,7 @@ import wepy from 'wepy';
 
 export default class Index extends wepy.page {
   config = {
-    navigationBarTitleText: 'test',
+    navigationBarTitleText: '趣圈阁',
     disableScroll: true
   };
   components = {};
@@ -33,7 +33,7 @@ export default class Index extends wepy.page {
   click() {
     wx.chooseImage({
       count: 1, // 默认9
-      sizeType: ['original', 'compressed'], // 可以指定是原图还是压缩图，默认二者都有
+      sizeType: ['original'], // 可以指定是原图还是压缩图，默认二者都有
       sourceType: ['album', 'camera'], // 可以指定来源是相册还是相机，默认二者都有
       success: res => {
         const src = res.tempFilePaths[0];
@@ -42,6 +42,9 @@ export default class Index extends wepy.page {
         wepy.navigateTo({ url: 'cut?src=' + src });
       }
     });
+  }
+  getUserInfo(res) {
+    console.log(res)
   }
   events = {
     

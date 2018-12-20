@@ -2,7 +2,6 @@
 @import '/zanui/zanui/btn.wxss';
 @import '/zanui/zanui/panel.wxss';
 @import '/assets/css/common.wxss';
-
 </style>
 
 <script>
@@ -20,7 +19,7 @@ export default class extends wepy.app {
     window: {
       backgroundTextStyle: 'light',
       navigationBarBackgroundColor: '#fff',
-      navigationBarTitleText: 'WeChat',
+      navigationBarTitleText: '趣圈阁',
       navigationBarTextStyle: 'black'
     }
   };
@@ -35,20 +34,10 @@ export default class extends wepy.app {
     this.use('requestfix');
   }
 
-  onLaunch() {}
+  onLaunch() {
 
-  getUserInfo(cb) {
-    const that = this;
-    if (this.globalData.userInfo) {
-      return this.globalData.userInfo;
-    }
-    wepy.getUserInfo({
-      success(res) {
-        that.globalData.userInfo = res.userInfo;
-        cb && cb(res.userInfo);
-      }
-    });
   }
+
 
   methods = {
     setGloBalData() {}

@@ -44,20 +44,19 @@ export default class Edit extends wepy.page {
     mainItemH: 500,
     isShow: false,
     drewPath: null,
-    drawCanvasWidth: 1280
+    drawCanvasWidth: 800
   };
   components = {myCanvas};
 
   onLoad(param, data) {
     let inputData = data.preload;
-
     this.mainImg = [];
     this.allImgInfo = [];
     this.mainImg = inputData.mainImg;
     
     if(!inputData.allImgInfo){
+        this.isEdit = true
         this.imageArr = inputData.imageArr;
-
         let len = this.imageArr.length;
         if (Number.isInteger(len / 2)) {
             this.imageArr.splice(len / 2, 0, this.mainImg.src);
@@ -65,16 +64,16 @@ export default class Edit extends wepy.page {
         async function addImageInfo(params) {
             if (inputData) {
                 for (let i = 0, len = this.imageArr.length; i < len; i++) {
-                    let val = this.imageArr[i],imgInfo;
-                    imgInfo = await getImageInfo(val);
-                    imgInfo.isMain = i == (len - 1) / 2;
-                    imgInfo.mode = this.judgeDirection(imgInfo);
-                    imgInfo.baseHeight = imgInfo.height;
-                    imgInfo.baseWidth = imgInfo.width;
-                    imgInfo.isCut = false;
-                    imgInfo.basePath = imgInfo.path;
-                    imgInfo.id = i;
-                    this.allImgInfo.push(imgInfo);
+                  let val = this.imageArr[i],imgInfo;
+                  imgInfo = await getImageInfo(val);
+                  imgInfo.isMain = i == (len - 1) / 2;
+                  imgInfo.mode = "aspectFill";
+                  imgInfo.baseHeight = imgInfo.height;
+                  imgInfo.baseWidth = imgInfo.width;
+                  imgInfo.isCut = false;
+                  imgInfo.basePath = imgInfo.path;
+                  imgInfo.id = i;
+                  this.allImgInfo.push(imgInfo);
                 }
                 this.$apply();
                 this.$invoke("myCanvas", "init", {
@@ -85,11 +84,12 @@ export default class Edit extends wepy.page {
         }
         addImageInfo.apply(this);
     }else{
+        this.isEdit = false  //是否编辑过了
         this.allImgInfo = inputData.allImgInfo;
         this.$invoke("myCanvas", "init", {
-                  width: 700,
-                  height: 700 * this.allImgInfo.length
-                })  
+          width: this.drawCanvasWidth,
+          height: this.drawCanvasWidth * this.allImgInfo.length
+        })  
         this.$apply()
     }
     
@@ -98,7 +98,6 @@ export default class Edit extends wepy.page {
   events = {
     "setDrewPath": (path) => {
       this.drewPath = path
-      console.log(this.drewPath)
     }
   }
  
@@ -107,7 +106,8 @@ export default class Edit extends wepy.page {
     //选择模式
     selectMode(item) {
       if (item.isMain) return;
-      showActionSheet(['aspectFit模式', 'aspectFill模式', '截取', '换图']).then(res => {
+      showActionSheet(['显示全图', '自动截取', '手动截取', '换图']).then(res => {
+        this.isEdit = true
         this.allImgInfo.filter(img => img.id === item.id).map(val => {
           switch (res.tapIndex) {
             case 0:
@@ -136,25 +136,26 @@ export default class Edit extends wepy.page {
 
     //完成
     complate() {
-      let curPages = getCurrentPages();
-      let prePage = curPages[curPages.length - 2];
-      var outputData = prePage.data.imgData
-            .map(val => {
-                if(val.src == this.mainImg.src){
-                    val.info = this.allImgInfo;
-                }
-                return val;
-            });
-      this.$invoke("myCanvas", "draw", this.allImgInfo,(res)=>{
-        console.log(res)
-        prePage.setImgData(this.mainImg.src, {
-          info: this.allImgInfo,
-          drewPath: res.tempFilePath
+      if(this.isEdit){
+        let curPages = getCurrentPages();
+        let prePage = curPages[curPages.length - 2];
+        var outputData = prePage.data.imgData
+                        .map(val => {
+                            if(val.src == this.mainImg.src){
+                                val.info = this.allImgInfo;
+                            }
+                            return val;
+                        });
+        this.$invoke("myCanvas", "draw", this.allImgInfo,(res)=>{
+          prePage.setImgData(this.mainImg.src, {
+            info: this.allImgInfo,
+            drewPath: res.tempFilePath
+          })
+          wepy.navigateBack();
         })
-        wepy.navigateBack({
-          delta: 1 //返回的页面数，如果 delta 大于现有页面数，则返回到首页,
-        });
-      })
+      }else{
+        wepy.navigateBack();
+      }
     },
 
     //预览
@@ -167,14 +168,15 @@ export default class Edit extends wepy.page {
       this.$invoke("myCanvas", "saveImage", this.allImgInfo)
     }
   }; 
+
   //判断方向，并返回默认的图片mode
   judgeDirection(item) {
     /**
-       * 缩放	scaleToFill	不保持纵横比缩放图片，使图片的宽高完全拉伸至填满 image 元素
-         缩放	aspectFit	保持纵横比缩放图片，使图片的长边能完全显示出来。也就是说，可以完整地将图片显示出来。
-         缩放	aspectFill	保持纵横比缩放图片，只保证图片的短边能完全显示出来。也就是说，图片通常只在水平或垂直方向是完整的，另一个方向将会发生截取。
-         缩放	widthFix	宽度不变，高度自动变化，保持原图宽高比不变
-       */
+      缩放	scaleToFill	不保持纵横比缩放图片，使图片的宽高完全拉伸至填满 image 元素
+      缩放	aspectFit	保持纵横比缩放图片，使图片的长边能完全显示出来。也就是说，可以完整地将图片显示出来。
+      缩放	aspectFill	保持纵横比缩放图片，只保证图片的短边能完全显示出来。也就是说，图片通常只在水平或垂直方向是完整的，另一个方向将会发生截取。
+      缩放	widthFix	宽度不变，高度自动变化，保持原图宽高比不变
+    */
     let direction = item.width / item.height;
     return direction > 1 ? 'aspectFit' : 'aspectFill';
   }
