@@ -56,48 +56,48 @@ export default class Cropper extends wepy.component {
     }
   }
 
-    pushOrigin (src) {
-      this.src = src
-      this.Cropper.pushOrign(src)
-    } 
-    updateCanvas () {
-      this.Cropper.updateCanvas()
-    }
-    getCropperImage (fn, ev) {
-      let { imgLeft, imgTop, scaleWidth, scaleHeight } = this.Cropper // 获取图片在原画布坐标位置及宽高
-      let { x, y, width, height } = this.Cropper.cut // 获取裁剪框位置及大小
-      console.log(x, y, width, height, imgLeft, imgTop, scaleWidth, scaleHeight)
-      // devicePixelRatio= 1
-      // 所有参数乘设备像素比
-      // imgLeft = imgLeft * devicePixelRatio
-      // imgTop = imgTop * devicePixelRatio
-      // scaleWidth = scaleWidth * devicePixelRatio
-      // scaleHeight = scaleHeight * devicePixelRatio
-      // x = x * devicePixelRatio
-      // y = y * devicePixelRatio
-      // width = width * devicePixelRatio
-      // height = height * devicePixelRatio
-      // console.log(imgLeft,imgTop,scaleWidth,scaleHeight,x, y,width,height)
-      const targetCtx = wx.createCanvasContext('target') // 这里是目标canvas画布的id值
-      targetCtx.drawImage(this.src, imgLeft, imgTop, scaleWidth, scaleHeight) // tmp代表被裁剪图片的临时路径
-      targetCtx.draw(false, ()=>{
-        wx.canvasToTempFilePath({
-          canvasId: 'target',
-          x,
-          y,
-          width,
-          height,
-          success (res) {
-            const tmpPath = res.tempFilePath
-            fn(tmpPath)
-          }
-        })
+  pushOrigin (src) {
+    this.src = src
+    this.Cropper.pushOrign(src)
+  } 
+  updateCanvas () {
+    this.Cropper.updateCanvas()
+  }
+  getCropperImage (fn, ev) {
+    let { imgLeft, imgTop, scaleWidth, scaleHeight } = this.Cropper // 获取图片在原画布坐标位置及宽高
+    let { x, y, width, height } = this.Cropper.cut // 获取裁剪框位置及大小
+    console.log(x, y, width, height, imgLeft, imgTop, scaleWidth, scaleHeight)
+    // devicePixelRatio= 1
+    // 所有参数乘设备像素比
+    // imgLeft = imgLeft * devicePixelRatio
+    // imgTop = imgTop * devicePixelRatio
+    // scaleWidth = scaleWidth * devicePixelRatio
+    // scaleHeight = scaleHeight * devicePixelRatio
+    // x = x * devicePixelRatio
+    // y = y * devicePixelRatio
+    // width = width * devicePixelRatio
+    // height = height * devicePixelRatio
+    // console.log(imgLeft,imgTop,scaleWidth,scaleHeight,x, y,width,height)
+    const targetCtx = wx.createCanvasContext('target') // 这里是目标canvas画布的id值
+    targetCtx.drawImage(this.src, imgLeft, imgTop, scaleWidth, scaleHeight) // tmp代表被裁剪图片的临时路径
+    targetCtx.draw(false, ()=>{
+      wx.canvasToTempFilePath({
+        canvasId: 'target',
+        x,
+        y,
+        width,
+        height,
+        success (res) {
+          const tmpPath = res.tempFilePath
+          fn(tmpPath)
+        }
       })
-      // this.Cropper.getCropperImage(fn)
-    }
-    getCropperBase64 (fn, ev) {
-      this.Cropper.getCropperImage(fn)
-    }
+    })
+    // this.Cropper.getCropperImage(fn)
+  }
+  getCropperBase64 (fn, ev) {
+    this.Cropper.getCropperImage(fn)
+  }
 
   onLoad () {
     const options = this.options

@@ -1,5 +1,3 @@
-
-
 <template>
     <scroll-view scroll-y class="canvas-wrapper {{isShow? 'show' : 'hide'}}">
         <canvas canvas-id="mycanvas"  style="width:{{width}}px;height:{{height}}px" disable-scroll="true"></canvas>
@@ -17,7 +15,7 @@
  */
 import wepy from 'wepy';
 import { drawImg, _draw, _canvasToTempFilePath, _saveImageToPhotosAlbum } from '@/assets/js/canvasApi.js';
-import { showLoading, toast } from '@/assets/js/util.js';
+import { showLoading, toast,showModel } from '@/assets/js/util.js';
 export default class MyCanvas extends wepy.component {
   data = {
     width: 700,
@@ -89,6 +87,14 @@ export default class MyCanvas extends wepy.component {
           filePath: res.tempFilePath
         }).then((res) => {
           toast("保存成功。")
+        }).catch((err)=>{
+          showModel({
+            content: "保存失败，请检查小程序权限（右上角三个点 ==> 关于趣圈阁 ==> 右上角 ==> 设置 ==> 保存到相册）"
+          }).then(()=>{
+            if(err.errMsg === "saveImageToPhotosAlbum:fail auth deny"){
+              wx.openSetting();
+            } 
+          })
         })
       })
     }

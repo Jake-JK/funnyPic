@@ -6,7 +6,7 @@ export async function toast(title) {
     wepy.showToast({
       title: title, //提示的内容,
       icon: 'none', //图标,
-      duration: 2000, //延迟时间,
+      duration: 2500, //延迟时间,
       mask: true, //显示透明蒙层，防止触摸穿透,
       success: (res) => {
         resolve(res)
@@ -16,12 +16,12 @@ export async function toast(title) {
 }
 
 //选择图片
-export async function chooseImage(maxNum) {
+export async function chooseImage(maxNum, sourceType = ['album']) {
   return new Promise((resolve, reject) => {
     wepy.chooseImage({
       count: maxNum, //最多可以选择的图片张数,
       sizeType: ['original'],
-      sourceType: ['album', 'camera'],
+      sourceType: sourceType,
       success: (res) => {
         resolve(res)
       }, //返回图片的本地文件路径列表 tempFilePaths,
@@ -89,7 +89,7 @@ export function showModel(obj) {
     wepy.showModal({
       title: obj.title ? obj.title : "提示", //提示的标题,
       content: obj.content, //提示的内容,
-      showCancel: false, //是否显示取消按钮,
+      showCancel: obj.showCancel === 'show', //是否显示取消按钮,
       cancelColor: '#000000', //取消按钮的文字颜色,
       confirmText: '确定', //确定按钮的文字，默认为取消，最多 4 个字符,
       confirmColor: '#3CC51F', //确定按钮的文字颜色,
@@ -108,3 +108,5 @@ export function getHandImgHD(imageUrl) {
   imageUrl = imageUrl.join('/'); //重新拼接为字符串
   return imageUrl
 }
+
+

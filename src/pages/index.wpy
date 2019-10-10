@@ -37,7 +37,7 @@ export default class Index extends wepy.page {
       sourceType: ['album', 'camera'], // 可以指定来源是相册还是相机，默认二者都有
       success: res => {
         const src = res.tempFilePaths[0];
-        //  获取裁剪图片资源后，给data添加src属性及其值
+        //获取裁剪图片资源后，给data添加src属性及其值
         this.$preload({src: src})
         wepy.navigateTo({ url: 'cut?src=' + src });
       }

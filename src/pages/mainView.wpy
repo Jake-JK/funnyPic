@@ -11,7 +11,7 @@
               <open-data type="userNickName"></open-data>
             </view>
             <view class="flex flex-row mainImg-wrapper">
-              <view style="position: relative"  @tap="onTapImg({{item}})" wx:key="key"  wx:for = "{{imgData}}">
+              <view style="position: relative" @longpress="clearData({{item}},{{index}})"   @tap="onTapImg({{item}})" wx:key="key"  wx:for = "{{imgData}}">
                 <image class="mainImg" wx:if ="{{imgData.length > 0}}"  src="{{item.src}}" mode="aspectFit" lazy-load="false" /></image>
                 <view class="icon-success" wx:if="{{item.drewPath}}">
                   <image src="../assets/img/success.png" mode="scaleToFill"></image>
@@ -21,8 +21,8 @@
           </view>
         </view>
         <view class="tips">
-          <view>Tips:①点击图片 ==> 选择偶数张相片(最多8张) ==> 编辑</view>
-          <view style="padding-left:52rpx">②长按图片重新编辑。</view>
+          <view>Tips:①点击图片 ==> 选择偶数张相片(最多{{MAX_CHOSE}}张) ==> 编辑</view>
+          <view style="padding-left:52rpx">②长按相应图片重新编辑。</view>
         </view>
         <view style="width:100%">
           <view class="zan-btns">
@@ -41,13 +41,14 @@
           <canvas canvas-id="canvas" style="width:{{width}}px;height:{{height}}px" disable-scroll="true"></canvas>
         </view>
         <myCanvas></myCanvas>
+        <button class="shareBtn" open-type="share">分享</button>
     </view>
 </template>
 
 
 <script>
 import wepy from 'wepy';
-import { toast, chooseImage, showLoading, showModel,getHandImgHD } from '@/assets/js/util.js';
+import { toast, chooseImage, showLoading, showModel,getHandImgHD, shareApp } from '@/assets/js/util.js';
 import { _previewImage, _saveImageToPhotosAlbum } from "@/assets/js/canvasApi.js";
 import myCanvas from "@/components/myCanvas";
 let deviceWidth = wx.getSystemInfoSync().windowWidth;
@@ -59,11 +60,12 @@ export default class MainView extends wepy.page {
   };
   components = { myCanvas };
   data = {
-    imgSrc: '../assets/img/test_min.jpg',
+    imgSrc: '../assets/img/share.png',
     width: deviceWidth - cutLen,
     height: deviceWidth - cutLen,
     imgData: [],
-    changeMainData:[]
+    changeMainData:[],
+    MAX_CHOSE: 6
   };
   computed = {
     edited() {
@@ -74,7 +76,7 @@ export default class MainView extends wepy.page {
   methods = {
     onTapImg(item) {
       if (!item.info) {
-        chooseImage(8)
+        chooseImage(this.MAX_CHOSE)
           .then(res => {
             showLoading()
             var len = res.tempFilePaths.length;
@@ -82,7 +84,7 @@ export default class MainView extends wepy.page {
               this.$preload({ imageArr: res.tempFilePaths, mainImg: item });
               wx.navigateTo({ url: 'edit' });
             } else {
-              toast('请选择偶数张相片，最多8张');
+              toast(`请选择偶数张相片，最多${this.MAX_CHOSE}张`);
             }
             wepy.hideLoading()
           })
@@ -95,9 +97,23 @@ export default class MainView extends wepy.page {
         wx.navigateTo({ url: 'edit' });
       }
     },
+    //重新编辑
+    clearData(item,index){
+      if(Reflect.has(item, 'drewPath') || Reflect.has(item, 'info')){
+        showModel({
+          content: `是否重新编辑图 ${index+1}`,
+          showCancel: 'show'
+        }).then(()=>{
+          delete this.imgData[index]['drewPath']
+          delete this.imgData[index]['info']
+          this.$apply()
+          this.methods.onTapImg.call(this, this.imgData[index])
+        })
+      } 
+    },
     //预览全部已编辑好的图片
     preview() {
-      let previewArr = this.getAllDrewPath()
+      let previewArr = this.getSavePath()
       _previewImage({
         urls: previewArr
       })
@@ -114,6 +130,10 @@ export default class MainView extends wepy.page {
           isSuccess = false
           showModel({
             content: "保存失败，请检查小程序权限（右上角三个点 ==> 关于趣圈阁 ==> 右上角 ==> 设置 ==> 保存到相册）"
+          }).then(()=>{
+            if(err.errMsg === "saveImageToPhotosAlbum:fail auth deny") {
+              wx.openSetting();
+            }
           })
         })
         if(!isSuccess) {
@@ -122,7 +142,7 @@ export default class MainView extends wepy.page {
         }
       }
       wepy.hideLoading();
-      toast("已编辑的图片，已保存到相册")
+      toast("图片已保存到相册")
     },
 
     changeMainImg() {
@@ -134,6 +154,10 @@ export default class MainView extends wepy.page {
           wepy.navigateTo({ url: 'cut?src=' + inputImg });
         })
     },
+
+    onShare(){
+      
+    }
   };
 
   onLoad(param, data) {
@@ -150,12 +174,25 @@ export default class MainView extends wepy.page {
       this.imgData.push({ src: res.tempFilePath });
       this.$apply();
     })
-    console.log(this.imgData)
     this.$broadcast("myCanvasInit",{
       width:800,
       height:800
     })
   }
+
+  onShareAppMessage() {
+    return {
+      title: '趣圈阁，趣了一个圈。',
+      path: '/pages/mainView',
+      imageUrl: '/assets/img/share.png',
+      success: (res) => {
+        toast("感谢分享，爱你哟~~")
+      },
+      fail: () => {},
+      complete: () => {}
+    };
+  }
+  
   
   drawMainImg(fn){
     return new Promise((resolve, reject)=>{
@@ -239,6 +276,7 @@ export default class MainView extends wepy.page {
     this.$apply()
   }
 
+  //设置主图
   setMainImg(inputImg){
     this.imgSrc = inputImg;
     setTimeout(()=>{
@@ -286,6 +324,7 @@ export default class MainView extends wepy.page {
     
   }
   
+  //获取imgData中所有含有drewPath字段的对象
   getAllDrewPath() {
      return this.imgData.filter((val) => {
         if(val.drewPath) return val
@@ -293,10 +332,11 @@ export default class MainView extends wepy.page {
        return item.drewPath
      })
   }
+
+  //获取imgData中的所有保存路径，返回数组，优先获取drewPath，其次是src。
   getSavePath(){
     return this.imgData.map((val)=>{
       let path
-      console.log(val)
       path = val.drewPath? val.drewPath : val.src
       return path
     })
@@ -416,6 +456,21 @@ page {
 .tips {
   font-size: 24rpx;
   color: #ccc
+}
+
+.shareBtn{
+  position:absolute;
+  right: 0;
+  top: 100rpx;
+  background-color: #26d5e3;
+  color: #ffffff;
+  font-size: 26rpx;
+  padding-left: 30rpx;
+  padding-right: 15rpx;
+  line-height: 1.6em;
+  border-top-left-radius: .8em;
+  border-bottom-left-radius: .8em;
+  border-color: #26d5e3;
 }
 </style>
 
